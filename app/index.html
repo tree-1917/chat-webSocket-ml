@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Private Chat with WebSocket</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+          crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: 50px auto;
+        }
+        .messages {
+            height: 400px;
+            overflow-y: scroll;
+            padding: 15px;
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+        .message.sent {
+            justify-content: flex-end;
+        }
+        .message.received {
+            justify-content: flex-start;
+        }
+        .message .bubble {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            position: relative;
+        }
+        .message.sent .bubble {
+            background-color: #0d6efd;
+            color: white;
+            border-bottom-right-radius: 0;
+        }
+        .message.received .bubble {
+            background-color: #e9ecef;
+            color: black;
+            border-bottom-left-radius: 0;
+        }
+        .input-area {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container chat-container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">Private Chat with WebSocket</h3>
+            <small>Your ID: <span id="ws-id" class="fw-bold"></span></small>
+        </div>
+        <div class="card-body">
+            <div id="messages" class="messages mb-3">
+                <!-- Messages will appear here -->
+            </div>
+            <form onsubmit="sendMessage(event)">
+                <div class="row g-2 input-area">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" id="targetId" placeholder="Target ID" required autocomplete="off"/>
+                    </div>
+                    <div class="col-md-7">
+                        <input type="text" class="form-control" id="messageText" placeholder="Enter your message" required autocomplete="off"/>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Send</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS and dependencies (Optional for additional functionality) -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"
+        integrity="sha384-IQsoLXlHj0kGIk6h4r8T6LkQ/UkI42WxBDp6GmCb9mBjrGQVxLkvq3kx7aHENP2K"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"
+        integrity="sha384-cVKIPhGktk0OA3eF5ZCqfnZ+/+Yt27MJpGYN4R5WUsEIc5K7/dkgx5MjUAXcP0hi"
+        crossorigin="anonymous"></script>
+
+<script>
+    const client_id = Date.now();
+    document.getElementById("ws-id").textContent = client_id;
+    const ws = new WebSocket(`ws://${window.location.host}/ws/${client_id}`);
+
+    ws.onmessage = function(event) {
+        const data = event.data;
+        const messages = document.getElementById('messages');
+
+        // Parse message to determine sender
+        const prefix = `Client #${client_id} says: `;
+        let sender, messageText;
+
+        if (data.startsWith(`Client #`)) {
+            // Received message
+            sender = 'received';
+            messageText = data.replace(/^Client #\d+ says: /, '');
+        } else {
+            // Sent message
+            sender = 'sent';
+            messageText = data.replace(/^You: /, '');
+        }
+
+        // Create message element
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', sender);
+
+        const bubble = document.createElement('div');
+        bubble.classList.add('bubble');
+        bubble.textContent = messageText;
+
+        messageElement.appendChild(bubble);
+        messages.appendChild(messageElement);
+
+        // Scroll to the bottom
+        messages.scrollTop = messages.scrollHeight;
+    };
+
+    function sendMessage(event) {
+        event.preventDefault();
+        const targetId = document.getElementById("targetId").value.trim();
+        const messageInput = document.getElementById("messageText");
+        const message = messageInput.value.trim();
+
+        if (targetId === "" || message === "") {
+            alert("Please enter both Target ID and Message.");
+            return;
+        }
+
+        const messageData = JSON.stringify({ "target_id": targetId, "message": message });
+        ws.send(messageData);
+
+        // Display sent message
+        const messages = document.getElementById('messages');
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', 'sent');
+
+        const bubble = document.createElement('div');
+        bubble.classList.add('bubble');
+        bubble.textContent = message;
+
+        messageElement.appendChild(bubble);
+        messages.appendChild(messageElement);
+
+        // Clear the input field
+        messageInput.value = '';
+
+        // Scroll to the bottom
+        messages.scrollTop = messages.scrollHeight;
+    }
+</script>
+</body>
+</html>
